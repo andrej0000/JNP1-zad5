@@ -10,7 +10,7 @@ Krawędź łączy wirusa z bezpośrednio otrzymaną z niego mutacją. */
 
 // Należy zaimplementować szablon klasy, która reprezentuje taki graf.
 /* Klasa Virus reprezentuje informacje o wirusie. Jej implementacja
-zostanie dostarczona w stosownym czasie. 
+zostanie dostarczona w stosownym czasie.
 Klasa VirusGenealogy powinna udostępniać następujący interfejs. */
 
 /*
@@ -22,11 +22,62 @@ Zakładamy, że:
 * wartości typu Virus::id_type tworzą porządek liniowy i można je
   porównywać za pomocą operatorów ==, !=, <=, >=, <, >.
 */
+
+#include <iostream>
 #include <vector>
+#include <map>
+#include <memory>
 
-class Virus;
+using std::vector;
+using std::map;
+using std::shared_ptr;
+using std::weak_ptr;
 
-template <class Virus> class VirusGenealogy{
+class VirusNotFound : public std::exception{
+public:
+	virtual char const * what() noexcept {
+		return "VirusNotFound";
+	}
+};
+
+class VirusAlreadyCreated : public std::exception{
+public:
+	virtual char const * what() noexcept {
+		return "VirusAlreadyCreated";
+	}
+};
+
+class TriedToRemoveStemVirus : public std::exception{
+public:
+	virtual char const * what() noexcept {
+		return "TriedToRemoveStemVirus";
+	}
+};
+
+
+template <class Virus>
+class VirusGenealogy{
+private:
+
+	class Node {
+	public:
+		typedef shared_ptr<Node> s_ptr;
+		typedef weak_ptr<Node> w_ptr;
+
+		Virus vir;
+		typename Virus::id_type id;
+
+		vector<w_ptr> parents;
+		vector<s_ptr> children;
+		Node(Virus v) : vir(v), id(v.get_id())
+		{
+		}
+		//TODO: konstruktory
+		//TODO: dodawanie parentow/childrenow
+		//TODO: getter do id, parents children
+	};
+	typename Virus::id_type const stem_id;
+public:
 	// Tworzy nową genealogię.
 	// Tworzy także węzęł wirusa macierzystego o identyfikatorze stem_id.
 	VirusGenealogy(typename Virus::id_type const &stem_id);
