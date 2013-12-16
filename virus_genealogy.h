@@ -77,6 +77,8 @@ private:
 		//TODO: getter do id, parents children
 	};
 	typename Virus::id_type const stem_id;
+	//TODO: trzymanie w jakiejs mapie wszystkich node'ow z kluczem type_id
+	//TODO: getter do stem_id pewnie
 public:
 	// Tworzy nową genealogię.
 	// Tworzy także węzęł wirusa macierzystego o identyfikatorze stem_id.
