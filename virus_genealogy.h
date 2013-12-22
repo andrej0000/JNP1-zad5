@@ -51,21 +51,21 @@ using std::weak_ptr;
 
 class VirusNotFound : public std::exception{
 public:
-	virtual char const * what() noexcept {
+	virtual const char* what() const noexcept {
 		return "VirusNotFound";
 	}
 };
 
 class VirusAlreadyCreated : public std::exception{
 public:
-	virtual char const * what() noexcept {
+	virtual const char* what() const noexcept {
 		return "VirusAlreadyCreated";
 	}
 };
 
 class TriedToRemoveStemVirus : public std::exception{
 public:
-	virtual char const * what() noexcept {
+	virtual const char* what() const noexcept {
 		return "TriedToRemoveStemVirus";
 	}
 };
@@ -99,7 +99,8 @@ private:
 			return vir;
 		}
 		void add_parent(s_ptr p){
-			//TODO: co jesli sie nie uda stworzyc w_ptr
+			//-T-O-D-O-: co jesli sie nie uda stworzyc w_ptr
+			// uda, mamy gwarantowane noexept. insert moze nie pojsc
 			w_ptr w(p);
 			parents.insert(w);
 		}
@@ -109,10 +110,16 @@ private:
 				std::cout << "Dodano dziecko " << c->id << " do " << this->id<< std::endl;
 			children.insert(c);
 		}
+		
+		void remove_child(s_ptr c){
+			if(debug)
+				std::cout << "usunieto dziecko " << c->id << " z " << id << std::endl;
+			children.erase(c);
+		}
 
 		vector <typename Virus::id_type> get_parents(){
 			vector <typename Virus::id_type> vid;
-			for (typename set<w_ptr>::iterator it = parents.begin(); it != parents.end(); it++){
+			for ( auto it = parents.begin(); it != parents.end(); it++){
 				if (s_ptr sp = it->lock()){
 					vid.push_back(sp->id);
 				}
@@ -155,6 +162,9 @@ private:
 	}
 
 public:
+	VirusGenealogy( const VirusGenealogy& ) = delete;
+	VirusGenealogy& operator=( const VirusGenealogy& ) = delete;
+	
 	// Tworzy nową genealogię.
 	// Tworzy także węzęł wirusa macierzystego o identyfikatorze stem_id.
 	VirusGenealogy(typename Virus::id_type const &stem_id) : stem(new Node(Virus(stem_id))){
@@ -184,6 +194,9 @@ public:
 
 	// Sprawdza, czy wirus o podanym identyfikatorze istnieje.
 	bool exists(typename Virus::id_type const &id) const {
+		auto it = this->nodes.find(id);
+		return (it != this->nodes.end() && it->second.lock());
+	/*
 		try {
 			this->get_virus_by_id(id);
 			return true;
@@ -191,6 +204,7 @@ public:
 		catch (VirusNotFound vnf){
 			return false;
 		}
+	*/
 	};
 
 	// Zwraca referencję do obiektu reprezentującego wirus o podanym
@@ -222,6 +236,24 @@ public:
 		if (exists(id)){
 			throw VirusAlreadyCreated();
 		}
+		
+		vector<s_ptr> parents;
+		for( auto parent_id : parent_ids )
+			parents.push_back( get_virus_by_id(parent_id) );
+		
+		s_ptr new_node( new Node(Virus(id)) );
+		
+		try{
+			for( auto parent : parents ){
+				parent->add_child(new_node);
+				new_node->add_parent(parent);
+			}
+			nodes.insert( map_pair(id, w_ptr(new_node) ) );
+		} catch( std::exception e ){
+			for( auto parent : parents )
+				parent->remove_child(new_node); // nie rzuca
+		}
+		/*
 		s_ptr s(new Node(Virus(id)));
 		for (auto parent_id : parent_ids){
 			s_ptr parent_p = get_virus_by_id(parent_id);
@@ -229,7 +261,7 @@ public:
 			parent_p->add_child(s);
 		}
 		nodes.insert(map_pair(id, w_ptr(s)));
-
+		*/
 	}
 
 	// Dodaje nową krawędź w grafie genealogii.
@@ -237,8 +269,12 @@ public:
 	void connect(typename Virus::id_type const &child_id, typename Virus::id_type const &parent_id){
 		s_ptr child = get_virus_by_id(child_id);
 		s_ptr parent = get_virus_by_id(parent_id);
-		child->add_parent(parent);
 		parent->add_child(child);
+		try {
+			child->add_parent(parent);
+		} catch( std::exception e ){
+			parent->remove_child(child);
+		}
 	}
 
 	// Usuwa wirus o podanym identyfikatorze.
@@ -249,6 +285,20 @@ public:
 		if (id == get_stem_id()){
 			throw TriedToRemoveStemVirus();
 		}
+		s_ptr source = get_virus_by_id(id);
+		
+		try{
+			for( auto p : source->parents )
+				if( s_ptr parent = p.lock() )
+					parent->remove_child(source);
+		
+			nodes.erase(id);
+		}catch( std::exception e ){ // rollback
+			for( auto p : source->parents )
+				if( s_ptr parent = p.lock() )
+					parent->add_child(source);
+		}
+		/*
 		auto it = nodes.find(id);
 		if (nodes.end() == it){
 			throw VirusNotFound();
@@ -263,6 +313,7 @@ public:
 			}
 			nodes.erase(it);
 		}
+		*/
 	}
 };
 
