@@ -110,7 +110,7 @@ private:
 				std::cout << "Dodano dziecko " << c->id << " do " << this->id<< std::endl;
 			children.insert(c);
 		}
-		
+
 		void remove_child(s_ptr c){
 			if(debug)
 				std::cout << "usunieto dziecko " << c->id << " z " << id << std::endl;
@@ -164,7 +164,7 @@ private:
 public:
 	VirusGenealogy( const VirusGenealogy& ) = delete;
 	VirusGenealogy& operator=( const VirusGenealogy& ) = delete;
-	
+
 	// Tworzy nową genealogię.
 	// Tworzy także węzęł wirusa macierzystego o identyfikatorze stem_id.
 	VirusGenealogy(typename Virus::id_type const &stem_id) : stem(new Node(Virus(stem_id))){
@@ -236,13 +236,13 @@ public:
 		if (exists(id)){
 			throw VirusAlreadyCreated();
 		}
-		
+
 		vector<s_ptr> parents;
 		for( auto parent_id : parent_ids )
 			parents.push_back( get_virus_by_id(parent_id) );
-		
+
 		s_ptr new_node( new Node(Virus(id)) );
-		
+
 		try{
 			for( auto parent : parents ){
 				parent->add_child(new_node);
@@ -286,12 +286,12 @@ public:
 			throw TriedToRemoveStemVirus();
 		}
 		s_ptr source = get_virus_by_id(id);
-		
+
 		try{
 			for( auto p : source->parents )
 				if( s_ptr parent = p.lock() )
 					parent->remove_child(source);
-		
+
 			nodes.erase(id);
 		}catch( std::exception e ){ // rollback
 			for( auto p : source->parents )
